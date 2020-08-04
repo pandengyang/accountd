@@ -1,0 +1,22 @@
+{{ define "items" }}
+{
+  "collection": {
+    "items": [
+      {{ range $index, $value := .Items }}
+      {{ if $index }},{{end}}
+      {
+        "data": [
+          {"name": "id", "value": "{{ .Id }}"},
+          {"name": "nickname", "value": "{{ .Nickname }}"},
+          {"name": "avatar", "value": "{{ .Avatar }}"},
+          {"name": "email", "value": "{{ .Email }}"},
+          {"name": "state", "value": "{{ .State }}"},
+          {"name": "created_at", "value": "{{ .CreatedAt }}"}
+        ]
+      }
+      {{ end }}
+    ],
+    "total": {{ .Total }}
+  }
+}
+{{ end }}

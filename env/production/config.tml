@@ -1,0 +1,12 @@
+DisablePathCorrection = true
+IgnoreServerErrors = [
+  "http: Server closed"
+]
+[Other]
+  [Other.Database]
+    driver = "mysql"
+    host = "localhost"
+    port = "3306"
+    user = "demo"
+    password = "demo"
+    database = "demo"
