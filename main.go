@@ -9,12 +9,14 @@ import (
 	"flag"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gomodule/redigo/redis"
 	irisjwt "github.com/iris-contrib/middleware/jwt"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/middleware/logger"
 	"github.com/kataras/iris/v12/middleware/recover"
 	"github.com/kataras/iris/v12/mvc"
 	"os"
+	"time"
 )
 
 const (
@@ -30,7 +32,9 @@ var (
 	ip   = flag.String("ip", "", "The ip address where the server listens to")
 	port = flag.String("port", "", "The port which the server listens to")
 
-	Db             *sql.DB
+	SqlDb   *sql.DB
+	CacheDb *redis.Pool
+
 	authMiddleware *irisjwt.Middleware
 )
 
@@ -75,22 +79,26 @@ func newApp() (app *iris.Application) {
 	/* 配置 */
 	app.Configure(iris.WithConfiguration(iris.TOML("env/working/config.tml")))
 
-	/* Database */
-	if err = initDatabase(app); err != nil {
+	/* SQL 数据库 */
+	if err = initSqlDb(app); err != nil {
 		panic(err)
 	}
 
-	/* Redis 连接池 */
+	/* 缓存 */
+	if err = initCacheDb(app); err != nil {
+		panic(err)
+	}
 
 	/* 配置 mvc */
+	mvc.Configure(app.Party("/api/verificationcodes"), verificationCodes)
 	mvc.Configure(app.Party("/api/accounts"), accounts)
 	mvc.Configure(app.Party("/api/auth"), auth)
 
 	return app
 }
 
-func initDatabase(app *iris.Application) (err error) {
-	dbConfig := app.ConfigurationReadOnly().GetOther()["Database"].(map[string]interface{})
+func initSqlDb(app *iris.Application) (err error) {
+	dbConfig := app.ConfigurationReadOnly().GetOther()["SqlDb"].(map[string]interface{})
 	dbDriver := dbConfig["driver"].(string)
 	dbHost := dbConfig["host"].(string)
 	dbPort := dbConfig["port"].(string)
@@ -100,9 +108,58 @@ func initDatabase(app *iris.Application) (err error) {
 
 	/* SQL 连接池 */
 	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbDatabase)
-	Db, err = sql.Open(dbDriver, dataSourceName)
+	SqlDb, err = sql.Open(dbDriver, dataSourceName)
 
 	return err
+}
+
+func initCacheDb(app *iris.Application) (err error) {
+	dbConfig := app.ConfigurationReadOnly().GetOther()["CacheDb"].(map[string]interface{})
+	dbHost := dbConfig["host"].(string)
+	dbPort := dbConfig["port"].(string)
+	dbPassword := dbConfig["password"].(string)
+	dbDatabase := dbConfig["database"].(int64)
+
+	CacheDb = &redis.Pool{
+		MaxActive:   1000,              // 最激活闲连接数
+		MaxIdle:     100,               // 最大空闲连接数
+		IdleTimeout: 300 * time.Second, // 空闲连接关闭超时
+		Wait:        true,
+		Dial: func() (redis.Conn, error) {
+			conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", dbHost, dbPort),
+				redis.DialPassword(dbPassword),
+				redis.DialDatabase(int(dbDatabase)),
+				redis.DialConnectTimeout(5*time.Second),
+				redis.DialReadTimeout(5*time.Second),
+				redis.DialWriteTimeout(5*time.Second))
+			if err != nil {
+				return nil, err
+			}
+
+			return conn, nil
+		},
+	}
+
+	return err
+}
+
+func verificationCodes(app *mvc.Application) {
+	middlewares := []iris.Handler{
+		authMiddleware.Serve,
+		authenticater.ExtractClaims,
+		authenticater.CheckTokenRevoked,
+	}
+
+	/* 数据仓库 */
+	cacheRepo := repositories.NewVerificationCodeRedisRepository(CacheDb)
+
+	/* 服务 */
+	vcService := services.NewVerificationCodeService(nil, cacheRepo)
+	app.Register(vcService)
+
+	app.Handle(&controllers.VerificationCodeController{
+		Middlewares: middlewares,
+	})
 }
 
 func accounts(app *mvc.Application) {
@@ -113,11 +170,14 @@ func accounts(app *mvc.Application) {
 	}
 
 	/* 数据仓库 */
-	persistenceRepo := repositories.NewAccountMySQLRepository(Db)
+	persistenceRepo := repositories.NewAccountMySQLRepository(SqlDb)
+	cacheRepo := repositories.NewVerificationCodeRedisRepository(CacheDb)
 
 	/* 服务 */
-	userService := services.NewAccountService(persistenceRepo, nil)
-	app.Register(userService)
+	accountService := services.NewAccountService(persistenceRepo, nil)
+	vcService := services.NewVerificationCodeService(nil, cacheRepo)
+	app.Register(accountService)
+	app.Register(vcService)
 
 	app.Handle(&controllers.AccountController{
 		Middlewares: middlewares,
@@ -132,11 +192,11 @@ func auth(app *mvc.Application) {
 	}
 
 	/* 数据仓库 */
-	persistenceRepo := repositories.NewAccountMySQLRepository(Db)
+	persistenceRepo := repositories.NewAccountMySQLRepository(SqlDb)
 
 	/* 服务 */
-	userService := services.NewAccountService(persistenceRepo, nil)
-	app.Register(userService)
+	accountService := services.NewAccountService(persistenceRepo, nil)
+	app.Register(accountService)
 
 	app.Handle(&controllers.AuthController{
 		PrivateKeyPathname: PRIKEY,

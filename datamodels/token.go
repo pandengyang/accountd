@@ -7,9 +7,9 @@ import (
 const (
 	ISSUER         = "demo"
 	AUDIENCE       = "demo_client"
-	EFFECTIVE_TIME = time.Hour * 2
+	EFFECTIVE_TIME = int64(time.Hour * 2 / time.Second)
 
-	REFRESH_TOKEN_EFFECTIVE_TIME = time.Hour * 24 * 30
+	REFRESH_TOKEN_EFFECTIVE_TIME = int64(time.Hour * 24 * 30 / time.Second)
 )
 
 type RefreshToken struct {

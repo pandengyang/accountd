@@ -16,16 +16,16 @@ type verificationCodeService struct {
 }
 
 func NewVerificationCodeService(persistenceRepo, cacheRepo repositories.VerificationCodeRepository) VerificationCodeService {
-	return &vcService{
+	return &verificationCodeService{
 		persistenceRepo: persistenceRepo,
 		cacheRepo:       cacheRepo,
 	}
 }
 
-func (s *verificationCodeService) Insert(vc *datamodels.VerificationCode) (insertedId int64, err error) {
-	return s.persistenceRepo.Insert(vc)
+func (s *verificationCodeService) Insert(vc *datamodels.VerificationCode) (insertedPhone string, err error) {
+	return s.cacheRepo.Insert(vc)
 }
 
 func (s *verificationCodeService) SelectByPhone(phone string) (vc datamodels.VerificationCode, err error) {
-	return s.persistenceRepo.SelectByPhone(phone)
+	return s.cacheRepo.SelectByPhone(phone)
 }

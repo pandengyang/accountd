@@ -1,5 +1,9 @@
 package datamodels
 
+const (
+	SALT_LEN = 8
+)
+
 type Account struct {
 	Id               int64  `json:"id,omitemtpy"`
 	Nickname         string `json:"nickname,omitemtpy"`

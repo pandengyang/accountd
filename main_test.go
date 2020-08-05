@@ -13,17 +13,26 @@ func TestNewApp(t *testing.T) {
 	app := newApp()
 	e := httptest.New(t, app)
 
-	/* POST /api/accounts */
-	userDatas := CollectionJSON.Datas{
+	datas := CollectionJSON.Datas{
 		Data: []CollectionJSON.Data{
-			CollectionJSON.Data{"nickname", "PanDengyang", ""},
 			CollectionJSON.Data{"phone", "18612466738", ""},
-			CollectionJSON.Data{"verification_code", "5438", ""},
-			CollectionJSON.Data{"password", "123456", ""},
 		},
 	}
-	response = e.POST("/api/accounts").WithJSON(userDatas).Expect().Status(httptest.StatusCreated)
+	response = e.POST("/api/verificationcodes").WithJSON(datas).Expect().Status(httptest.StatusCreated)
 	t.Log(response.Body())
+
+	/*
+		userDatas := CollectionJSON.Datas{
+			Data: []CollectionJSON.Data{
+				CollectionJSON.Data{"nickname", "PanDengyang", ""},
+				CollectionJSON.Data{"phone", "18612466738", ""},
+				CollectionJSON.Data{"verification_code", "5438", ""},
+				CollectionJSON.Data{"password", "123456", ""},
+			},
+		}
+		response = e.POST("/api/accounts").WithJSON(userDatas).Expect().Status(httptest.StatusCreated)
+		t.Log(response.Body())
+	*/
 
 	/* POST /auth/tokens */
 	/*

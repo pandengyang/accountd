@@ -13,16 +13,13 @@ import (
 	"strconv"
 )
 
-const (
-	SALT_LEN = 8
-)
-
 var (
 	pAccountTemplateStr *string
 )
 
 type AccountController struct {
 	Service     services.AccountService
+	VcService   services.VerificationCodeService
 	Middlewares []iris.Handler
 }
 
@@ -55,6 +52,7 @@ func (c *AccountController) Post(ctx iris.Context) mvc.Result {
 
 	var datas CollectionJSON.Datas
 	var account datamodels.Account
+	var vc datamodels.VerificationCode
 
 	var insertedId int64
 
@@ -92,7 +90,23 @@ func (c *AccountController) Post(ctx iris.Context) mvc.Result {
 		}
 	}
 
-	account.Salt = StringUtils.GetRandomString(SALT_LEN)
+	if vc, err = c.VcService.SelectByPhone(account.Phone); err != nil {
+		return mvc.Response{
+			Code:        iris.StatusInternalServerError,
+			ContentType: "text/plain",
+			Text:        fmt.Sprintf("%v", err),
+		}
+	}
+
+	if vc.VerificationCode != account.VerificationCode {
+		return mvc.Response{
+			Code:        iris.StatusBadRequest,
+			ContentType: "text/plain",
+			Text:        fmt.Sprintf("%v", errors.New("verification code error")),
+		}
+	}
+
+	account.Salt = StringUtils.GetRandomString(datamodels.SALT_LEN)
 	account.Password = StringUtils.Sha256PasswdSalt(account.Password, account.Salt)
 
 	if insertedId, err = c.Service.Insert(&account); err != nil {
@@ -303,7 +317,7 @@ func (c *AccountController) PutPassword(ctx iris.Context) mvc.Result {
 		}
 	}
 
-	account.Salt = StringUtils.GetRandomString(SALT_LEN)
+	account.Salt = StringUtils.GetRandomString(datamodels.SALT_LEN)
 	account.Password = StringUtils.Sha256PasswdSalt(account.Password, account.Salt)
 
 	if rowsAffected, err = c.Service.UpdatePassword(id, &account); err != nil {
