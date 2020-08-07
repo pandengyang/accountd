@@ -13,8 +13,7 @@ import (
 )
 
 type VerificationCodeController struct {
-	Service     services.VerificationCodeService
-	Middlewares []iris.Handler
+	Service services.VerificationCodeService
 }
 
 func (c *VerificationCodeController) BeforeActivation(ba mvc.BeforeActivation) {
@@ -86,6 +85,6 @@ func (c *VerificationCodeController) Post(ctx iris.Context) mvc.Result {
 
 	return mvc.Response{
 		Code: iris.StatusCreated,
-		Text: fmt.Sprintf("/verificationcodes/%s", insertedPhone),
+		Text: fmt.Sprintf("/verificationcodes/%s/%s", insertedPhone, vc.VerificationCode), // TODO
 	}
 }

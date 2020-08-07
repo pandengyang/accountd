@@ -37,14 +37,14 @@ func init() {
 
 func (c *AccountController) BeforeActivation(ba mvc.BeforeActivation) {
 	ba.Handle("POST", "/", "Post")
-	ba.Handle("DELETE", "/{id:int64}", "Delete")
+	ba.Handle("DELETE", "/{id:int64}", "Delete", c.Middlewares...)
 
-	ba.Handle("PUT", "/{id:int64}/nickname", "PutNickname")
-	ba.Handle("PUT", "/{id:int64}/phone", "PutPhone")
-	ba.Handle("PUT", "/{id:int64}/password", "PutPassword")
+	ba.Handle("PUT", "/{id:int64}/nickname", "PutNickname", c.Middlewares...)
+	ba.Handle("PUT", "/{id:int64}/phone", "PutPhone", c.Middlewares...)
+	ba.Handle("PUT", "/{id:int64}/password", "PutPassword", c.Middlewares...)
 
-	ba.Handle("GET", "/", "GetAllPerPage")
-	ba.Handle("GET", "/all", "GetAll")
+	ba.Handle("GET", "/", "GetAllPerPage", c.Middlewares...)
+	ba.Handle("GET", "/all", "GetAll", c.Middlewares...)
 }
 
 func (c *AccountController) Post(ctx iris.Context) mvc.Result {

@@ -20,11 +20,10 @@ var (
 	pTokenTemplateStr *string
 )
 
-type AuthController struct {
+type TokenController struct {
 	Service            services.AccountService
 	PrivateKeyPathname string
 	PrivateKey         *ecdsa.PrivateKey
-	Middlewares        []iris.Handler
 }
 
 func init() {
@@ -39,7 +38,7 @@ func init() {
 	pTokenTemplateStr = &contentStr
 }
 
-func (c *AuthController) BeforeActivation(ba mvc.BeforeActivation) {
+func (c *TokenController) BeforeActivation(ba mvc.BeforeActivation) {
 	keyData, err := ioutil.ReadFile(c.PrivateKeyPathname)
 	if err != nil {
 		panic(fmt.Errorf("read file %s error: %v", c.PrivateKeyPathname, err))
@@ -51,10 +50,10 @@ func (c *AuthController) BeforeActivation(ba mvc.BeforeActivation) {
 	}
 	c.PrivateKey = privateKey
 
-	ba.Handle("POST", "/tokens", "PostTokens")
+	ba.Handle("POST", "/", "PostTokens")
 }
 
-func (c *AuthController) PostTokens(ctx iris.Context) mvc.Result {
+func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 	var err error
 
 	var datas CollectionJSON.Datas
@@ -114,7 +113,7 @@ func (c *AuthController) PostTokens(ctx iris.Context) mvc.Result {
 				return mvc.Response{
 					Code:        iris.StatusUnauthorized,
 					ContentType: "text/plain",
-					Text:        fmt.Sprintf("%v", err),
+					Text:        fmt.Sprintf("%v", errors.New("invalid account or password")),
 				}
 			}
 
@@ -130,7 +129,7 @@ func (c *AuthController) PostTokens(ctx iris.Context) mvc.Result {
 			return mvc.Response{
 				Code:        iris.StatusUnauthorized,
 				ContentType: "text/plain",
-				Text:        "Invalid account or password",
+				Text:        fmt.Sprintf("%v", errors.New("invalid account or password")),
 			}
 		}
 
@@ -146,7 +145,7 @@ func (c *AuthController) PostTokens(ctx iris.Context) mvc.Result {
 	claims := &jwt.MapClaims{
 		"aud":      datamodels.AUDIENCE,
 		"exp":      now + int64(datamodels.EFFECTIVE_TIME),
-		"jti":      fmt.Sprintf("%d", 1),
+		"jti":      fmt.Sprintf("%d-%d-%s", account.Id, now, StringUtils.GetRandomString(datamodels.JTI_RANDOM_LEN)),
 		"iat":      now,
 		"iss":      datamodels.ISSUER,
 		"nbf":      now,

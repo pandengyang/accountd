@@ -92,7 +92,7 @@ func newApp() (app *iris.Application) {
 	/* 配置 mvc */
 	mvc.Configure(app.Party("/api/verificationcodes"), verificationCodes)
 	mvc.Configure(app.Party("/api/accounts"), accounts)
-	mvc.Configure(app.Party("/api/auth"), auth)
+	mvc.Configure(app.Party("/api/tokens"), tokens)
 
 	return app
 }
@@ -144,12 +144,6 @@ func initCacheDb(app *iris.Application) (err error) {
 }
 
 func verificationCodes(app *mvc.Application) {
-	middlewares := []iris.Handler{
-		authMiddleware.Serve,
-		authenticater.ExtractClaims,
-		authenticater.CheckTokenRevoked,
-	}
-
 	/* 数据仓库 */
 	cacheRepo := repositories.NewVerificationCodeRedisRepository(CacheDb)
 
@@ -157,9 +151,7 @@ func verificationCodes(app *mvc.Application) {
 	vcService := services.NewVerificationCodeService(nil, cacheRepo)
 	app.Register(vcService)
 
-	app.Handle(&controllers.VerificationCodeController{
-		Middlewares: middlewares,
-	})
+	app.Handle(&controllers.VerificationCodeController{})
 }
 
 func accounts(app *mvc.Application) {
@@ -175,8 +167,9 @@ func accounts(app *mvc.Application) {
 
 	/* 服务 */
 	accountService := services.NewAccountService(persistenceRepo, nil)
-	vcService := services.NewVerificationCodeService(nil, cacheRepo)
 	app.Register(accountService)
+
+	vcService := services.NewVerificationCodeService(nil, cacheRepo)
 	app.Register(vcService)
 
 	app.Handle(&controllers.AccountController{
@@ -184,13 +177,7 @@ func accounts(app *mvc.Application) {
 	})
 }
 
-func auth(app *mvc.Application) {
-	middlewares := []iris.Handler{
-		authMiddleware.Serve,
-		authenticater.ExtractClaims,
-		authenticater.CheckTokenRevoked,
-	}
-
+func tokens(app *mvc.Application) {
 	/* 数据仓库 */
 	persistenceRepo := repositories.NewAccountMySQLRepository(SqlDb)
 
@@ -198,9 +185,8 @@ func auth(app *mvc.Application) {
 	accountService := services.NewAccountService(persistenceRepo, nil)
 	app.Register(accountService)
 
-	app.Handle(&controllers.AuthController{
+	app.Handle(&controllers.TokenController{
 		PrivateKeyPathname: PRIKEY,
-		Middlewares:        middlewares,
 	})
 }
 
