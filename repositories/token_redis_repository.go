@@ -77,3 +77,15 @@ func (r *tokenRedisRepository) AccessTokenRevoked(accessToken string) (revoked b
 
 	return revoked, err
 }
+
+func (r *tokenRedisRepository) DeleteRefreshToken(refreshToken string) (rowsAffected int64, err error) {
+	conn := r.Db.Get()
+	defer conn.Close()
+
+	rtKey := fmt.Sprintf("rt:%s", refreshToken)
+	if _, err = conn.Do("DEL", rtKey); err != nil {
+		return rowsAffected, err
+	}
+
+	return rowsAffected, err
+}

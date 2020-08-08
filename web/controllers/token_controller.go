@@ -52,10 +52,11 @@ func (c *TokenController) BeforeActivation(ba mvc.BeforeActivation) {
 	}
 	c.PrivateKey = privateKey
 
-	ba.Handle("POST", "/", "PostTokens")
+	ba.Handle("POST", "/", "Post")
+	ba.Handle("Delete", "/", "Delete")
 }
 
-func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
+func (c *TokenController) Post(ctx iris.Context) mvc.Result {
 	var err error
 
 	var datas CollectionJSON.Datas
@@ -211,5 +212,35 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 	return mvc.Response{
 		Code: iris.StatusCreated,
 		Text: tokenJson,
+	}
+}
+
+func (c *TokenController) Delete(ctx iris.Context) mvc.Result {
+	var err error
+
+	ctx.Values().Get("user_id")
+	jti = ctx.Values.Get("jti")
+
+	/* 删除 refresh token */
+	if _, err = c.Service.DeleteRefreshToken(refreshToken); err != nil {
+		return mvc.Response{
+			Code:        iris.StatusInternalServerError,
+			ContentType: "text/plain",
+			Text:        fmt.Sprintf("%v", err),
+		}
+	}
+
+	/* 吊销 access token */
+	if _, err = c.Service.RevokeAccessToken(jti); err != nil {
+		return mvc.Response{
+			Code:        iris.StatusInternalServerError,
+			ContentType: "text/plain",
+			Text:        fmt.Sprintf("%v", err),
+		}
+	}
+
+	return mvc.Response{
+		Code: iris.StatusOK,
+		Text: "ok",
 	}
 }

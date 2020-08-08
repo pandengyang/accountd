@@ -45,7 +45,6 @@ func ExtractClaims(ctx iris.Context) {
 
 	ctx.Values().Set("user_id", claims["sub"])
 	ctx.Values().Set("jwt_id", claims["jti"])
-	ctx.Values().Set("permissions", claims["permissions"])
 
 	ctx.Next()
 }

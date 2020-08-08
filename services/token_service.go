@@ -6,6 +6,8 @@ import (
 
 type TokenService interface {
 	InsertRefreshToken(refreshToken string) (insertedRefreshToken string, err error)
+	DeleteRefreshToken(refreshToken string) (rowsAffected int64, err error)
+
 	InsertRevokedAccessToken(refreshToken string) (insertedRevokedAccessToken string, err error)
 
 	RefreshTokenExists(refreshToken string) (exists bool, err error)
@@ -38,4 +40,8 @@ func (s *tokenService) RefreshTokenExists(refreshToken string) (exists bool, err
 
 func (s *tokenService) AccessTokenRevoked(accessToken string) (revoked bool, err error) {
 	return s.cacheRepo.AccessTokenRevoked(accessToken)
+}
+
+func (s *tokenService) DeleteRefreshToken(refreshToken string) (rowsAffected int64, err error) {
+	return s.cacheRepo.DeleteRefreshToken(refreshToken)
 }
