@@ -57,9 +57,11 @@ func (r *tokenRedisRepository) RefreshTokenExists(refreshToken string) (exists b
 	defer conn.Close()
 
 	rtKey := fmt.Sprintf("rt:%s", refreshToken)
-	if exists, err := redis.Bool(conn.Do("EXISTS", rtKey)); err != nil {
+	fmt.Println(rtKey)
+	if exists, err = redis.Bool(conn.Do("EXISTS", rtKey)); err != nil {
 		return exists, err
 	}
+	fmt.Println(exists)
 
 	return exists, err
 }
@@ -69,7 +71,7 @@ func (r *tokenRedisRepository) AccessTokenRevoked(accessToken string) (revoked b
 	defer conn.Close()
 
 	ratKey := fmt.Sprintf("rat:%s", accessToken)
-	if revoked, err := redis.Bool(conn.Do("EXISTS", ratKey)); err != nil {
+	if revoked, err = redis.Bool(conn.Do("EXISTS", ratKey)); err != nil {
 		return revoked, err
 	}
 

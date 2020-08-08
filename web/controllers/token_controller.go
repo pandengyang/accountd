@@ -61,6 +61,7 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 	var datas CollectionJSON.Datas
 	var account datamodels.Account
 	var password string
+	var refreshTokenExists bool
 
 	var accessToken string
 	var refreshToken string
@@ -90,6 +91,9 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 
 		case "verification_code":
 			account.VerificationCode = value.Value
+
+		case "refresh_token":
+			refreshToken = value.Value
 		}
 	}
 
@@ -135,7 +139,22 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 				Text:        fmt.Sprintf("%v", errors.New("invalid account or password")),
 			}
 		}
+	} else if refreshToken != "" {
+		if refreshTokenExists, err = c.Service.RefreshTokenExists(refreshToken); err != nil {
+			return mvc.Response{
+				Code:        iris.StatusInternalServerError,
+				ContentType: "text/plain",
+				Text:        fmt.Sprintf("%v", err),
+			}
+		}
 
+		if !refreshTokenExists {
+			return mvc.Response{
+				Code:        iris.StatusUnauthorized,
+				ContentType: "text/plain",
+				Text:        fmt.Sprintf("%v", errors.New("refresh token expires")),
+			}
+		}
 	} else {
 		return mvc.Response{
 			Code:        iris.StatusBadRequest,
@@ -165,12 +184,14 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 		}
 	}
 
-	refreshToken = StringUtils.Md5(jti)
-	if _, err = c.Service.InsertRefreshToken(refreshToken); err != nil {
-		return mvc.Response{
-			Code:        iris.StatusInternalServerError,
-			ContentType: "text/plain",
-			Text:        fmt.Sprintf("%v", err),
+	if refreshToken == "" {
+		refreshToken = StringUtils.Md5(jti)
+		if _, err = c.Service.InsertRefreshToken(refreshToken); err != nil {
+			return mvc.Response{
+				Code:        iris.StatusInternalServerError,
+				ContentType: "text/plain",
+				Text:        fmt.Sprintf("%v", err),
+			}
 		}
 	}
 

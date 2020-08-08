@@ -38,8 +38,9 @@ func TestNewApp(t *testing.T) {
 
 	datas := CollectionJSON.Datas{
 		Data: []CollectionJSON.Data{
-			CollectionJSON.Data{"nickname", "PanDengyang", ""},
-			CollectionJSON.Data{"password", "123456", ""},
+			CollectionJSON.Data{"refresh_token", "B346E6393E5162A276392CBA9A37436C", ""},
+			// CollectionJSON.Data{"nickname", "PanDengyang", ""},
+			// CollectionJSON.Data{"password", "123456", ""},
 		},
 	}
 	response = e.POST("/api/tokens").WithJSON(datas).Expect().Status(httptest.StatusCreated)
