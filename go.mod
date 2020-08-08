@@ -13,7 +13,7 @@ require (
 	github.com/iris-contrib/middleware/jwt v0.0.0-20191219204441-78279b78a367
 	github.com/kataras/iris/v12 v12.1.8
 	github.com/moul/http2curl v1.0.0 // indirect
-	github.com/pandengyang/utils v1.0.3
+	github.com/pandengyang/utils v1.0.7
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.15.1 // indirect

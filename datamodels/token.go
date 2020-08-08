@@ -8,7 +8,7 @@ const (
 	ISSUER         = "demo"
 	AUDIENCE       = "demo_client"
 	EFFECTIVE_TIME = int64(time.Hour * 2 / time.Second)
-	JTI_RAMDOM_LEN = 6
+	JTI_RANDOM_LEN = 6
 
 	REFRESH_TOKEN_EXPIRE = int64(time.Hour * 24 * 30 / time.Second)
 )

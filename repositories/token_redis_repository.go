@@ -10,7 +10,7 @@ type tokenRedisRepository struct {
 	Db *redis.Pool
 }
 
-func NewVerificationCodeRedisRepository(db *redis.Pool) VerificationCodeRepository {
+func NewTokenRedisRepository(db *redis.Pool) TokenRepository {
 	return &tokenRedisRepository{
 		Db: db,
 	}
@@ -24,32 +24,32 @@ func (r *tokenRedisRepository) InsertRefreshToken(refreshToken string) (inserted
 
 	rtKey := fmt.Sprintf("rt:%s", refreshToken)
 	if _, err = conn.Do("SET", rtKey, "E"); err != nil {
-		return insertedPhone, err
+		return insertedRefreshToken, err
 	}
 
-	if _, err = conn.Do("EXPIRE", rtKey, datamodels.RefreshTokenExpire); err != nil {
-		return insertedPhone, err
+	if _, err = conn.Do("EXPIRE", rtKey, datamodels.REFRESH_TOKEN_EXPIRE); err != nil {
+		return insertedRefreshToken, err
 	}
 
-	return insertedPhone, err
+	return insertedRefreshToken, err
 }
 
-func (r *tokenRedisRepository) InsertRevokedAccessToken(refreshToken string) (insertedRevokedAccessToken string, err error) {
+func (r *tokenRedisRepository) InsertRevokedAccessToken(accessToken string) (insertedRevokedAccessToken string, err error) {
 	conn := r.Db.Get()
 	defer conn.Close()
 
-	insertedRefreshToken = refreshToken
+	insertedRevokedAccessToken = accessToken
 
-	rtKey := fmt.Sprintf("rt:%s", refreshToken)
-	if _, err = conn.Do("SET", rtKey, "E"); err != nil {
-		return insertedPhone, err
+	ratKey := fmt.Sprintf("rat:%s", accessToken)
+	if _, err = conn.Do("SET", ratKey, "E"); err != nil {
+		return insertedRevokedAccessToken, err
 	}
 
-	if _, err = conn.Do("EXPIRE", rtKey, datamodels.RefreshTokenExpire); err != nil {
-		return insertedPhone, err
+	if _, err = conn.Do("EXPIRE", ratKey, datamodels.EFFECTIVE_TIME); err != nil {
+		return insertedRevokedAccessToken, err
 	}
 
-	return insertedPhone, err
+	return insertedRevokedAccessToken, err
 }
 
 func (r *tokenRedisRepository) RefreshTokenExists(refreshToken string) (exists bool, err error) {
@@ -57,7 +57,7 @@ func (r *tokenRedisRepository) RefreshTokenExists(refreshToken string) (exists b
 	defer conn.Close()
 
 	rtKey := fmt.Sprintf("rt:%s", refreshToken)
-	if exists, err := redis.Bool(c.Do("EXISTS", rtKey)); err != nil {
+	if exists, err := redis.Bool(conn.Do("EXISTS", rtKey)); err != nil {
 		return exists, err
 	}
 
@@ -69,8 +69,8 @@ func (r *tokenRedisRepository) AccessTokenRevoked(accessToken string) (revoked b
 	defer conn.Close()
 
 	ratKey := fmt.Sprintf("rat:%s", accessToken)
-	if revoked, err := redis.Bool(c.Do("EXISTS", ratKey)); err != nil {
-		return exists, err
+	if revoked, err := redis.Bool(conn.Do("EXISTS", ratKey)); err != nil {
+		return revoked, err
 	}
 
 	return revoked, err

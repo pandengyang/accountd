@@ -21,7 +21,9 @@ var (
 )
 
 type TokenController struct {
-	Service            services.AccountService
+	Service        services.TokenService
+	AccountService services.AccountService
+
 	PrivateKeyPathname string
 	PrivateKey         *ecdsa.PrivateKey
 }
@@ -60,6 +62,8 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 	var account datamodels.Account
 	var password string
 
+	var accessToken string
+	var refreshToken string
 	var tokenJson string
 
 	err = ctx.ReadJSON(&datas)
@@ -90,8 +94,7 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 	}
 
 	if account.Phone != "" {
-		account, err = c.Service.SelectAuthByPhone(account.Phone)
-		if err != nil {
+		if account, err = c.AccountService.SelectAuthByPhone(account.Phone); err != nil {
 			if err == sql.ErrNoRows {
 				return mvc.Response{
 					Code:        iris.StatusUnauthorized,
@@ -107,7 +110,7 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 			}
 		}
 	} else if account.Nickname != "" {
-		account, err = c.Service.SelectAuthByNickname(account.Nickname)
+		account, err = c.AccountService.SelectAuthByNickname(account.Nickname)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return mvc.Response{
@@ -142,10 +145,11 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 	}
 
 	now := time.Now().Unix()
+	jti := fmt.Sprintf("%d-%d-%s", account.Id, now, StringUtils.GetRandomString(datamodels.JTI_RANDOM_LEN))
 	claims := &jwt.MapClaims{
 		"aud":      datamodels.AUDIENCE,
 		"exp":      now + int64(datamodels.EFFECTIVE_TIME),
-		"jti":      fmt.Sprintf("%d-%d-%s", account.Id, now, StringUtils.GetRandomString(datamodels.JTI_RANDOM_LEN)),
+		"jti":      jti,
 		"iat":      now,
 		"iss":      datamodels.ISSUER,
 		"nbf":      now,
@@ -153,8 +157,16 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 		"nickname": account.Nickname,
 	}
 
-	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, claims).SignedString(c.PrivateKey)
-	if err != nil {
+	if accessToken, err = jwt.NewWithClaims(jwt.SigningMethodES256, claims).SignedString(c.PrivateKey); err != nil {
+		return mvc.Response{
+			Code:        iris.StatusInternalServerError,
+			ContentType: "text/plain",
+			Text:        fmt.Sprintf("%v", err),
+		}
+	}
+
+	refreshToken = StringUtils.Md5(jti)
+	if _, err = c.Service.InsertRefreshToken(refreshToken); err != nil {
 		return mvc.Response{
 			Code:        iris.StatusInternalServerError,
 			ContentType: "text/plain",
@@ -164,7 +176,7 @@ func (c *TokenController) PostTokens(ctx iris.Context) mvc.Result {
 
 	token := datamodels.Token{
 		AccessToken:  accessToken,
-		RefreshToken: "refreshToken",
+		RefreshToken: refreshToken,
 	}
 
 	if tokenJson, err = CollectionJSON.Item(token, pTokenTemplateStr); err != nil {

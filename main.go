@@ -180,8 +180,12 @@ func accounts(app *mvc.Application) {
 func tokens(app *mvc.Application) {
 	/* 数据仓库 */
 	persistenceRepo := repositories.NewAccountMySQLRepository(SqlDb)
+	cacheRepo := repositories.NewTokenRedisRepository(CacheDb)
 
 	/* 服务 */
+	tokenService := services.NewTokenService(nil, cacheRepo)
+	app.Register(tokenService)
+
 	accountService := services.NewAccountService(persistenceRepo, nil)
 	app.Register(accountService)
 
